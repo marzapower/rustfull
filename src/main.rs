@@ -5,7 +5,7 @@ use std::{
 };
 
 use rustfull::ThreadPool;
-
+use rustfull::handlers::{Handler, SimpleHandler};
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
@@ -35,7 +35,14 @@ fn handle_connection(mut stream: &TcpStream) {
     let uri = pieces.get(1).unwrap();
     let http_version = pieces.get(2).unwrap();
 
+    let mut handlers = Vec::new();
+    handlers.push(SimpleHandler::new("authors"));
+    handlers.push(SimpleHandler::new("book"));
+
     if *http_version == "HTTP/1.1" && *http_method == "GET" {
+        for handler in handlers {
+            handler.handle(*http_method, *uri).unwrap();
+        }
 
 
         // Restful paths are like these:

@@ -1,3 +1,6 @@
+pub mod handlers;
+
+
 use std::{sync::{mpsc, Arc, Mutex}, thread::{self, JoinHandle}};
 
 #[derive(Debug,Clone,Copy)]
