@@ -1,16 +1,22 @@
 use std::{
     collections::HashMap, fs, io::{prelude::*, BufReader}, net::{TcpListener, TcpStream},
-    
+    thread,
+    time::Duration,
 };
+
+use rustfull::ThreadPool;
 
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let pool = ThreadPool::build(20).unwrap();
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
 
-        handle_connection(&stream);
+        pool.execute(move || {
+            handle_connection(&stream);
+        });
     }
 }
 
@@ -20,14 +26,54 @@ fn handle_connection(mut stream: &TcpStream) {
 
     let pieces: Vec<_> = request_line.split(" ").collect();
 
+    if pieces.len() < 3 {
+        write_response(stream, 500, "ERROR", String::from("<html><body>Error!</body></html>"));
+        return;
+    }
+
     let http_method = pieces.get(0).unwrap();
     let uri = pieces.get(1).unwrap();
     let http_version = pieces.get(2).unwrap();
 
     if *http_version == "HTTP/1.1" && *http_method == "GET" {
+
+
+        // Restful paths are like these:
+        // let's imagine we have authors, and we have books written by them
+        //
+        // GET /authors
+        // GET /authors/:id
+        // PUT /authors
+        // PATCH /authors/:id
+        // DELETE /authors/:id
+        // 
+        // GET /authors/:id/books
+        // GET /authors/:id/books/:book_id
+        // ...
+        // ...
+        //  
         match *uri {
             "/" => {
-                println!("[{http_method} - 200] ({uri}): We matched the path");
+                let trd = thread::current();
+                let id = trd.id();
+                
+                println!("[{http_method} - 200] [{id:?}] ({uri}): We matched the path");
+                let html = fs::read_to_string("hello.html").unwrap();
+                write_response(stream, 200, "OK", html);
+            }
+
+            "/authors" => {
+
+            }
+
+            "/authors/:id" => {
+                
+            }
+
+            "/sleep" => {
+                let id = thread::current().id();
+                println!("[{http_method} - 200] [{id:?}] ({uri}): We matched the path");
+                thread::sleep(Duration::from_secs(5));
                 let html = fs::read_to_string("hello.html").unwrap();
                 write_response(stream, 200, "OK", html);
             }
