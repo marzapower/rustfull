@@ -9,15 +9,17 @@ use rustfull::handlers::{Handler, SimpleHandler};
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    let pool = ThreadPool::build(20).unwrap();
+    let pool = ThreadPool::build(5).unwrap();
 
-    for stream in listener.incoming() {
+    for stream in listener.incoming().take(2) {
         let stream = stream.unwrap();
 
         pool.execute(move || {
             handle_connection(&stream);
         });
     }
+
+    println!("Gracefully shutting down");
 }
 
 fn handle_connection(mut stream: &TcpStream) {
@@ -44,21 +46,6 @@ fn handle_connection(mut stream: &TcpStream) {
             handler.handle(*http_method, *uri).unwrap();
         }
 
-
-        // Restful paths are like these:
-        // let's imagine we have authors, and we have books written by them
-        //
-        // GET /authors
-        // GET /authors/:id
-        // PUT /authors
-        // PATCH /authors/:id
-        // DELETE /authors/:id
-        // 
-        // GET /authors/:id/books
-        // GET /authors/:id/books/:book_id
-        // ...
-        // ...
-        //  
         match *uri {
             "/" => {
                 let trd = thread::current();
