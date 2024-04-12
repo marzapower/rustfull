@@ -105,12 +105,12 @@ impl Handler for SimpleHandler {
       "result": {}
     }).to_string())
   }
-  fn delete(&self, id: &str) -> Result<String, HandlerError> {
+  fn delete(&self, _id: &str) -> Result<String, HandlerError> {
     Ok(json!({
       "result": {}
     }).to_string())
   }
-  fn update(&self, id: &str) -> Result<String, HandlerError> {
+  fn update(&self, _id: &str) -> Result<String, HandlerError> {
     Ok(json!({
       "result": {}
     }).to_string())

@@ -1,7 +1,5 @@
 use std::{
-    collections::HashMap, fs, io::{prelude::*, BufReader}, net::{TcpListener, TcpStream},
-    thread,
-    time::Duration,
+    collections::HashMap, io::{prelude::*, BufReader}, net::{TcpListener, TcpStream},
 };
 
 use rustfull::ThreadPool;
