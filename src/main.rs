@@ -11,7 +11,7 @@ fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::build(5).unwrap();
 
-    for stream in listener.incoming().take(2) {
+    for stream in listener.incoming().take(20) {
         let stream = stream.unwrap();
 
         pool.execute(move || {
@@ -39,43 +39,23 @@ fn handle_connection(mut stream: &TcpStream) {
 
     let mut handlers = Vec::new();
     handlers.push(SimpleHandler::new("authors"));
-    handlers.push(SimpleHandler::new("book"));
+    handlers.push(SimpleHandler::new("books"));
 
-    if *http_version == "HTTP/1.1" && *http_method == "GET" {
-        for handler in handlers {
-            handler.handle(*http_method, *uri).unwrap();
+    if *http_version == "HTTP/1.1" {
+        let mut handled = false;
+
+        for handler in &mut handlers {
+            if let Some(result) = handler.handle(*http_method, *uri) {
+                let json = result.unwrap();
+                write_response(stream, 200, "OK", json);
+                handled = true;
+                break;
+            }
         }
 
-        match *uri {
-            "/" => {
-                let trd = thread::current();
-                let id = trd.id();
-                
-                println!("[{http_method} - 200] [{id:?}] ({uri}): We matched the path");
-                let html = fs::read_to_string("hello.html").unwrap();
-                write_response(stream, 200, "OK", html);
-            }
-
-            "/authors" => {
-
-            }
-
-            "/authors/:id" => {
-                
-            }
-
-            "/sleep" => {
-                let id = thread::current().id();
-                println!("[{http_method} - 200] [{id:?}] ({uri}): We matched the path");
-                thread::sleep(Duration::from_secs(5));
-                let html = fs::read_to_string("hello.html").unwrap();
-                write_response(stream, 200, "OK", html);
-            }
-
-            _ => {
-                println!("[{http_method} - 404] ({uri}): This path is not available");
-                write_response(stream, 404, "NOT FOUND", String::from("<html><body>Not found!</body></html>"));
-            }
+        if !handled {
+            println!("[{http_method} - 404] ({uri}): This path is not available");
+            write_response(stream, 404, "NOT FOUND", String::from("<html><body>Not found!</body></html>"));
         }
     } else {
         write_response(stream, 500, "ERROR", String::from("<html><body>Error!</body></html>"));
@@ -88,7 +68,7 @@ fn write_response(mut stream: &TcpStream, status: u16, msg: &str, content: Strin
 
     let mut headers = HashMap::new();
     headers.insert("Content-Length", format!("{size}"));
-    headers.insert("Content-Type", String::from("text/html"));
+    headers.insert("Content-Type", String::from("application/json"));
 
     let mut header_str = String::from("");
     for (key, val) in headers.iter() {
