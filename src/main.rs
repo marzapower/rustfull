@@ -1,9 +1,11 @@
 use std::{
-    collections::HashMap, io::{prelude::*, BufReader}, net::{TcpListener, TcpStream},
+    collections::HashMap,
+    io::{prelude::*, BufReader},
+    net::{TcpListener, TcpStream},
 };
 
-use rustfull::ThreadPool;
 use rustfull::handlers::{Handler, SimpleHandler};
+use rustfull::ThreadPool;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
@@ -27,7 +29,12 @@ fn handle_connection(mut stream: &TcpStream) {
     let pieces: Vec<_> = request_line.split(" ").collect();
 
     if pieces.len() < 3 {
-        write_response(stream, 500, "ERROR", String::from("<html><body>Error!</body></html>"));
+        write_response(
+            stream,
+            500,
+            "ERROR",
+            String::from("<html><body>Error!</body></html>"),
+        );
         return;
     }
 
@@ -53,10 +60,20 @@ fn handle_connection(mut stream: &TcpStream) {
 
         if !handled {
             println!("[{http_method} - 404] ({uri}): This path is not available");
-            write_response(stream, 404, "NOT FOUND", String::from("<html><body>Not found!</body></html>"));
+            write_response(
+                stream,
+                404,
+                "NOT FOUND",
+                String::from("<html><body>Not found!</body></html>"),
+            );
         }
     } else {
-        write_response(stream, 500, "ERROR", String::from("<html><body>Error!</body></html>"));
+        write_response(
+            stream,
+            500,
+            "ERROR",
+            String::from("<html><body>Error!</body></html>"),
+        );
     }
 }
 
