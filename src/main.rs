@@ -7,7 +7,33 @@ use std::{
 use rustfull::handlers::{Handler, SimpleHandler};
 use rustfull::ThreadPool;
 
+use futures::executor::block_on;
+use sea_orm::{Database, DbErr, EntityTrait};
+
+use migration::{Migrator, MigratorTrait};
+
+use entity::users;
+
+async fn run() -> Result<(), DbErr> {
+    let database_url = dotenvy::var("DATABASE_URL").unwrap();
+
+    let db = Database::connect(&database_url).await?;
+    Migrator::up(&db, None).await?;
+
+    let user = users::Entity::find_by_id(5).one(&db).await?;
+    println!("User is {:#?}", user);
+    dbg!(&user);
+
+    Ok(())
+}
+
 fn main() {
+    dotenvy::dotenv().unwrap();
+
+    if let Err(err) = block_on(run()) {
+        panic!("{}", err);
+    }
+
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::build(5).unwrap();
 

@@ -1,9 +1,17 @@
+[workspace]
+members = [".", "entity", "migration"]
+
 [package]
 name = "rustfull"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dotenvy = "0.15.7"
+futures = "0.3.30"
+sea-orm = { version = "1.0.0-rc.3", features = [ "sqlx-postgres", "runtime-async-std-native-tls", "macros" ] }
 serde_json = "1.0.115"
+migration = { path = "./migration" }
+entity = { path = "./entity" }

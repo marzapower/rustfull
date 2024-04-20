@@ -45,6 +45,7 @@ impl Handler for SimpleHandler {
             "I should handle {http_method} on {uri} for {}",
             self.resources_name
         );
+
         let mut pieces = uri.split("/");
         pieces.next();
         if let Some(some) = pieces.next() {
