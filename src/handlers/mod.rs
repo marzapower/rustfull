@@ -1,23 +1,33 @@
+use std::marker::PhantomData;
+
+use futures::Future;
+use sea_orm::{DatabaseConnection, EntityTrait};
 use serde_json::json;
 
 pub trait Handler {
-    fn handle(&self, http_method: &str, uri: &str) -> Option<Result<String, HandlerError>>;
+    fn handle(
+        &self,
+        http_method: &str,
+        uri: &str,
+    ) -> impl Future<Output = Option<Result<String, HandlerError>>>;
 
-    fn get_all(&self) -> Result<String, HandlerError>;
-    fn get(&self, id: &str) -> Result<String, HandlerError>;
-    fn create(&self) -> Result<String, HandlerError>;
-    fn delete(&self, id: &str) -> Result<String, HandlerError>;
-    fn update(&self, id: &str) -> Result<String, HandlerError>;
+    fn get_all(&self) -> impl Future<Output = Result<String, HandlerError>>;
+    fn get(&self, id: &str) -> impl Future<Output = Result<String, HandlerError>>;
+    fn create(&self) -> impl Future<Output = Result<String, HandlerError>>;
+    fn delete(&self, id: &str) -> impl Future<Output = Result<String, HandlerError>>;
+    fn update(&self, id: &str) -> impl Future<Output = Result<String, HandlerError>>;
 }
 
-pub struct SimpleHandler {
-    resources_name: String,
+pub struct SimpleHandler<'a, T: EntityTrait> {
+    db: &'a DatabaseConnection,
+    phantom: PhantomData<&'a T>,
 }
 
-impl SimpleHandler {
-    pub fn new(name: &str) -> Self {
-        SimpleHandler {
-            resources_name: String::from(name),
+impl<'a, T: EntityTrait> SimpleHandler<'a, T> {
+    pub fn new(db: &'a DatabaseConnection) -> Self {
+        SimpleHandler::<T> {
+            db,
+            phantom: PhantomData,
         }
     }
 }
@@ -25,7 +35,7 @@ impl SimpleHandler {
 #[derive(Debug)]
 pub struct HandlerError;
 
-impl Handler for SimpleHandler {
+impl<T: EntityTrait> Handler for SimpleHandler<'_, T> {
     // Restful paths are like these:
     // let's imagine we have authors, and we have books written by them
     //
@@ -40,16 +50,11 @@ impl Handler for SimpleHandler {
     // ...
     // ...
     //
-    fn handle(&self, http_method: &str, uri: &str) -> Option<Result<String, HandlerError>> {
-        println!(
-            "I should handle {http_method} on {uri} for {}",
-            self.resources_name
-        );
-
+    async fn handle(&self, http_method: &str, uri: &str) -> Option<Result<String, HandlerError>> {
         let mut pieces = uri.split("/");
         pieces.next();
         if let Some(some) = pieces.next() {
-            if *some == self.resources_name {
+            if some == T::default().table_name() {
                 let id = pieces.next();
                 let tuple = (http_method, id);
 
@@ -57,23 +62,23 @@ impl Handler for SimpleHandler {
 
                 match tuple {
                     ("GET", None) => {
-                        return Some(self.get_all());
+                        return Some(self.get_all().await);
                     }
 
                     ("PUT", None) => {
-                        return Some(self.create());
+                        return Some(self.create().await);
                     }
 
                     ("POST", Some(id)) => {
-                        return Some(self.update(id));
+                        return Some(self.update(id).await);
                     }
 
                     ("DELETE", Some(id)) => {
-                        return Some(self.delete(id));
+                        return Some(self.delete(id).await);
                     }
 
                     ("GET", Some(id)) => {
-                        return Some(self.get(id));
+                        return Some(self.get(id).await);
                     }
 
                     (_, _) => {
@@ -81,20 +86,21 @@ impl Handler for SimpleHandler {
                     }
                 }
             }
+        } else {
+            println!("I really do not know what to do!");
         }
         return None;
     }
 
-    fn get_all(&self) -> Result<String, HandlerError> {
+    async fn get_all(&self) -> Result<String, HandlerError> {
+        let data = T::find().into_json().all(self.db).await.unwrap();
         Ok(json!({
-          "result": [{
-            "id": "1",
-            "name": "Pippo"
-          }]
+          "result": data
         })
         .to_string())
     }
-    fn get(&self, id: &str) -> Result<String, HandlerError> {
+    async fn get(&self, id: &str) -> Result<String, HandlerError> {
+        // let data = T::find_by_id(1).into_json().one(self.db).await.unwrap();
         Ok(json!({
           "result": {
             "id": id,
@@ -103,19 +109,19 @@ impl Handler for SimpleHandler {
         })
         .to_string())
     }
-    fn create(&self) -> Result<String, HandlerError> {
+    async fn create(&self) -> Result<String, HandlerError> {
         Ok(json!({
           "result": {}
         })
         .to_string())
     }
-    fn delete(&self, _id: &str) -> Result<String, HandlerError> {
+    async fn delete(&self, _id: &str) -> Result<String, HandlerError> {
         Ok(json!({
           "result": {}
         })
         .to_string())
     }
-    fn update(&self, _id: &str) -> Result<String, HandlerError> {
+    async fn update(&self, _id: &str) -> Result<String, HandlerError> {
         Ok(json!({
           "result": {}
         })

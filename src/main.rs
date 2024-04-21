@@ -8,31 +8,14 @@ use rustfull::handlers::{Handler, SimpleHandler};
 use rustfull::ThreadPool;
 
 use futures::executor::block_on;
-use sea_orm::{Database, DbErr, EntityTrait};
+use sea_orm::{Database, DatabaseConnection, DbErr, EntityTrait};
 
 use migration::{Migrator, MigratorTrait};
 
-use entity::users;
-
-async fn run() -> Result<(), DbErr> {
-    let database_url = dotenvy::var("DATABASE_URL").unwrap();
-
-    let db = Database::connect(&database_url).await?;
-    Migrator::up(&db, None).await?;
-
-    let user = users::Entity::find_by_id(5).one(&db).await?;
-    println!("User is {:#?}", user);
-    dbg!(&user);
-
-    Ok(())
-}
+use entity::prelude::*;
 
 fn main() {
     dotenvy::dotenv().unwrap();
-
-    if let Err(err) = block_on(run()) {
-        panic!("{}", err);
-    }
 
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::build(5).unwrap();
@@ -40,15 +23,17 @@ fn main() {
     for stream in listener.incoming().take(20) {
         let stream = stream.unwrap();
 
-        pool.execute(move || {
-            handle_connection(&stream);
+        pool.execute(move |db: &DatabaseConnection| {
+            block_on(handle_connection(&stream, db));
         });
     }
 
     println!("Gracefully shutting down");
 }
 
-fn handle_connection(mut stream: &TcpStream) {
+async fn handle_connection(mut stream: &TcpStream, db: &DatabaseConnection) {
+    // let db = block_on(run()).unwrap();
+
     let buf_reader = BufReader::new(&mut stream);
     let request_line = buf_reader.lines().next().unwrap().unwrap();
 
@@ -69,14 +54,13 @@ fn handle_connection(mut stream: &TcpStream) {
     let http_version = pieces.get(2).unwrap();
 
     let mut handlers = Vec::new();
-    handlers.push(SimpleHandler::new("authors"));
-    handlers.push(SimpleHandler::new("books"));
+    handlers.push(SimpleHandler::<Users>::new(db));
 
     if *http_version == "HTTP/1.1" {
         let mut handled = false;
 
         for handler in &mut handlers {
-            if let Some(result) = handler.handle(*http_method, *uri) {
+            if let Some(result) = handler.handle(*http_method, *uri).await {
                 let json = result.unwrap();
                 write_response(stream, 200, "OK", json);
                 handled = true;

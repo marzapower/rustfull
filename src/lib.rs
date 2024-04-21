@@ -8,6 +8,11 @@ use std::{
     thread::{self, JoinHandle},
 };
 
+use entity::prelude::*;
+use futures::executor::block_on;
+use migration::Migrator;
+use sea_orm::{Database, DatabaseBackend, DatabaseConnection, DbErr};
+
 #[derive(Debug, Clone, Copy)]
 pub struct PoolCreationError;
 
@@ -17,20 +22,36 @@ struct Worker {
     thread: Option<JoinHandle<()>>,
 }
 
+async fn run() -> Result<DatabaseConnection, DbErr> {
+    let database_url = dotenvy::var("DATABASE_URL").unwrap();
+
+    let db = Database::connect(&database_url).await?;
+    // Migrator::up(&db, None).await?;
+
+    // let user = Users::find_by_id(1).one(&db).await?;
+    // println!("User is {:#?}", user);
+    // dbg!(&user);
+
+    Ok(db)
+}
+
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
-        let thread = thread::spawn(move || loop {
-            let message = receiver.lock().unwrap().recv();
+        let thread = thread::spawn(move || {
+            let db = block_on(run()).unwrap();
+            loop {
+                let message = receiver.lock().unwrap().recv();
 
-            match message {
-                Ok(job) => {
-                    println!("Worker {id} got a job; executing.");
-                    job();
-                }
+                match message {
+                    Ok(job) => {
+                        println!("Worker {id} got a job; executing.");
+                        job(&db);
+                    }
 
-                Err(_) => {
-                    println!("No senders to receive from");
-                    break;
+                    Err(_) => {
+                        println!("No senders to receive from");
+                        break;
+                    }
                 }
             }
         });
@@ -47,7 +68,7 @@ pub struct ThreadPool {
     sender: Option<Sender<Job>>,
 }
 
-type Job = Box<dyn FnOnce() + Send + 'static>;
+type Job = Box<dyn FnOnce(&DatabaseConnection) + Send + 'static>;
 
 impl ThreadPool {
     // --snip--
@@ -78,7 +99,7 @@ impl ThreadPool {
 
     pub fn execute<F>(&self, f: F)
     where
-        F: FnOnce() + Send + 'static,
+        F: FnOnce(&DatabaseConnection) + Send + 'static,
     {
         let job = Box::new(f);
 
