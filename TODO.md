@@ -12,6 +12,7 @@ ORMs:
 
 Networking:
 - axum
+    - and then use `curl` to test the project (@Justus_Fluegel)
 
 Typing:
 - https://zty.pe/
