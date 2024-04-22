@@ -19,16 +19,16 @@ where
     fn get_all(&self) -> impl Future<Output = Result<String, HandlerError>>;
     fn get<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
     where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
         K: Serialize;
     fn create(&self) -> impl Future<Output = Result<String, HandlerError>>;
     fn delete<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
     where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
         K: Serialize;
     fn update<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
     where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
         K: Serialize;
 }
 
@@ -147,21 +147,13 @@ where
     }
     async fn get<K>(&self, id: K) -> Result<String, HandlerError>
     where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
         K: Serialize,
     {
-        let data = T::find_by_id(id.clone())
-            .into_json()
-            .one(self.db)
-            .await
-            .unwrap();
+        let data = T::find_by_id(id).into_json().one(self.db).await.unwrap();
 
         Ok(json!({
-          "result": {
-            "id": id,
-            "data": data,
-            "name": "Pippo"
-          }
+          "result": data
         })
         .to_string())
     }
@@ -173,7 +165,7 @@ where
     }
     async fn delete<K>(&self, _id: K) -> Result<String, HandlerError>
     where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
         K: Serialize,
     {
         Ok(json!({
@@ -183,7 +175,7 @@ where
     }
     async fn update<K>(&self, _id: K) -> Result<String, HandlerError>
     where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
         K: Serialize,
     {
         Ok(json!({
