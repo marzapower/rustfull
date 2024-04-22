@@ -1,10 +1,15 @@
 use std::marker::PhantomData;
 
 use futures::Future;
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::{DatabaseConnection, EntityTrait, PrimaryKeyTrait};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-pub trait Handler {
+pub trait Handler<T>
+where
+    T: EntityTrait,
+    for<'a> <T::PrimaryKey as PrimaryKeyTrait>::ValueType: Deserialize<'a>,
+{
     fn handle(
         &self,
         http_method: &str,
@@ -12,10 +17,19 @@ pub trait Handler {
     ) -> impl Future<Output = Option<Result<String, HandlerError>>>;
 
     fn get_all(&self) -> impl Future<Output = Result<String, HandlerError>>;
-    fn get(&self, id: &str) -> impl Future<Output = Result<String, HandlerError>>;
+    fn get<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
+    where
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Serialize;
     fn create(&self) -> impl Future<Output = Result<String, HandlerError>>;
-    fn delete(&self, id: &str) -> impl Future<Output = Result<String, HandlerError>>;
-    fn update(&self, id: &str) -> impl Future<Output = Result<String, HandlerError>>;
+    fn delete<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
+    where
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Serialize;
+    fn update<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
+    where
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Serialize;
 }
 
 pub struct SimpleHandler<'a, T: EntityTrait> {
@@ -35,7 +49,12 @@ impl<'a, T: EntityTrait> SimpleHandler<'a, T> {
 #[derive(Debug)]
 pub struct HandlerError;
 
-impl<T: EntityTrait> Handler for SimpleHandler<'_, T> {
+impl<T: EntityTrait> Handler<T> for SimpleHandler<'_, T>
+where
+    T: EntityTrait,
+    <T::PrimaryKey as PrimaryKeyTrait>::ValueType: Clone + Serialize,
+    for<'a> <T::PrimaryKey as PrimaryKeyTrait>::ValueType: Deserialize<'a>,
+{
     // Restful paths are like these:
     // let's imagine we have authors, and we have books written by them
     //
@@ -70,15 +89,42 @@ impl<T: EntityTrait> Handler for SimpleHandler<'_, T> {
                     }
 
                     ("POST", Some(id)) => {
-                        return Some(self.update(id).await);
+                        return Some(
+                            self
+                                .update(
+                                    serde_json::from_str::<
+                                        <T::PrimaryKey as PrimaryKeyTrait>::ValueType,
+                                    >(id)
+                                    .unwrap(),
+                                )
+                                .await,
+                        );
                     }
 
                     ("DELETE", Some(id)) => {
-                        return Some(self.delete(id).await);
+                        return Some(
+                            self
+                                .delete(
+                                    serde_json::from_str::<
+                                        <T::PrimaryKey as PrimaryKeyTrait>::ValueType,
+                                    >(id)
+                                    .unwrap(),
+                                )
+                                .await,
+                        );
                     }
 
                     ("GET", Some(id)) => {
-                        return Some(self.get(id).await);
+                        return Some(
+                            self
+                                .get(
+                                    serde_json::from_str::<
+                                        <T::PrimaryKey as PrimaryKeyTrait>::ValueType,
+                                    >(id)
+                                    .unwrap(),
+                                )
+                                .await,
+                        );
                     }
 
                     (_, _) => {
@@ -99,11 +145,21 @@ impl<T: EntityTrait> Handler for SimpleHandler<'_, T> {
         })
         .to_string())
     }
-    async fn get(&self, id: &str) -> Result<String, HandlerError> {
-        // let data = T::find_by_id::<u8>(1).into_json().one(self.db).await.unwrap();
+    async fn get<K>(&self, id: K) -> Result<String, HandlerError>
+    where
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Serialize,
+    {
+        let data = T::find_by_id(id.clone())
+            .into_json()
+            .one(self.db)
+            .await
+            .unwrap();
+
         Ok(json!({
           "result": {
             "id": id,
+            "data": data,
             "name": "Pippo"
           }
         })
@@ -115,13 +171,21 @@ impl<T: EntityTrait> Handler for SimpleHandler<'_, T> {
         })
         .to_string())
     }
-    async fn delete(&self, _id: &str) -> Result<String, HandlerError> {
+    async fn delete<K>(&self, _id: K) -> Result<String, HandlerError>
+    where
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Serialize,
+    {
         Ok(json!({
           "result": {}
         })
         .to_string())
     }
-    async fn update(&self, _id: &str) -> Result<String, HandlerError> {
+    async fn update<K>(&self, _id: K) -> Result<String, HandlerError>
+    where
+        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType> + Clone,
+        K: Serialize,
+    {
         Ok(json!({
           "result": {}
         })
