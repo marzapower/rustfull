@@ -9,3 +9,10 @@ Async runtimes:
 ORMs:
 - sea-orm
 - diesel
+
+Networking:
+- axum
+
+Typing:
+- https://zty.pe/
+- https://www.keybr.com/
