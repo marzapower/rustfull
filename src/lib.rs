@@ -8,10 +8,8 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use entity::prelude::*;
 use futures::executor::block_on;
-use migration::Migrator;
-use sea_orm::{Database, DatabaseBackend, DatabaseConnection, DbErr};
+use sea_orm::{Database, DatabaseConnection, DbErr};
 
 #[derive(Debug, Clone, Copy)]
 pub struct PoolCreationError;

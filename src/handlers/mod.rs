@@ -51,7 +51,7 @@ impl<T: EntityTrait> Handler for SimpleHandler<'_, T> {
     // ...
     //
     async fn handle(&self, http_method: &str, uri: &str) -> Option<Result<String, HandlerError>> {
-        let mut pieces = uri.split("/");
+        let mut pieces = uri.split('/');
         pieces.next();
         if let Some(some) = pieces.next() {
             if some == T::default().table_name() {
@@ -89,7 +89,7 @@ impl<T: EntityTrait> Handler for SimpleHandler<'_, T> {
         } else {
             println!("I really do not know what to do!");
         }
-        return None;
+        None
     }
 
     async fn get_all(&self) -> Result<String, HandlerError> {
@@ -100,7 +100,7 @@ impl<T: EntityTrait> Handler for SimpleHandler<'_, T> {
         .to_string())
     }
     async fn get(&self, id: &str) -> Result<String, HandlerError> {
-        // let data = T::find_by_id(1).into_json().one(self.db).await.unwrap();
+        // let data = T::find_by_id::<u8>(1).into_json().one(self.db).await.unwrap();
         Ok(json!({
           "result": {
             "id": id,

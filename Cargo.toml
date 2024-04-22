@@ -1,6 +1,13 @@
 [workspace]
 members = [".", "entity", "migration"]
 
+[workspace.lints.clippy]
+pedantic = "warn"
+nursery = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+
+
 [package]
 name = "rustfull"
 version = "0.2.0"
