@@ -2,17 +2,17 @@ Things to look at:
 =====
 
 Async runtimes:
-- async-std
-- futures
-- tokio
+[] async-std
+[] futures
+[x] tokio
 
 ORMs:
-- sea-orm
-- diesel
+[x] sea-orm
+[] diesel
 
 Networking:
-- axum
-    - and then use `curl` to test the project (@Justus_Fluegel)
+[] axum
+    [x] and then use `curl` to test the project (@Justus_Fluegel)
 
 Typing:
 - https://zty.pe/
