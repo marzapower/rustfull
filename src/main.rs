@@ -25,10 +25,6 @@ async fn main() {
 }
 
 async fn handle_connection(mut stream: TcpStream, db: DatabaseConnection) {
-    // let db = block_on(run()).unwrap();
-
-    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-    
     let buf_reader = BufReader::new(&mut stream);
     let request_line = buf_reader.lines().next_line().await.unwrap().unwrap();
 
