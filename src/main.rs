@@ -5,6 +5,7 @@ use tokio::net::{TcpListener, TcpStream};
 
 use rustfull::handlers::{Handler, SimpleHandler};
 
+use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection, EntityTrait};
 
 use entity::prelude::*;
@@ -13,8 +14,9 @@ use entity::prelude::*;
 async fn main() {
     dotenvy::dotenv().unwrap();
 
-    let database_url = dotenvy::var("DATABASE_URL").unwrap();
+    let database_url = std::env::var("DATABASE_URL").unwrap();
     let db: DatabaseConnection = Database::connect(&database_url).await.unwrap();
+    Migrator::up(&db, None).await.unwrap();
 
     let listener = TcpListener::bind("127.0.0.1:7878").await.unwrap();
 

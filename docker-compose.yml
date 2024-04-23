@@ -1,0 +1,17 @@
+name: "rustfull"
+services:
+  psql:
+    image: postgres:16
+    volumes:
+      - database:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: rustfull
+    ports:
+      - "5555:5432"
+    expose:
+      - 5432
+
+volumes:
+  database:
