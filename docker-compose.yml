@@ -9,9 +9,18 @@ services:
       POSTGRES_PASSWORD: root
       POSTGRES_DB: rustfull
     ports:
-      - "5555:5432"
+      - "5432:5432"
     expose:
       - 5432
+  rust:
+    build:
+      context: .
+      args:
+        DOCKER_BUILDKIT: 1
+    ports:
+      - "3001:7878"
+    environment:
+      DATABASE_URL: "postgres://root:root@psql/rustfull"
 
 volumes:
   database:

@@ -12,13 +12,15 @@ use entity::prelude::*;
 
 #[tokio::main(worker_threads = 5)]
 async fn main() {
-    dotenvy::dotenv().unwrap();
+    let _res = dotenvy::dotenv();
 
     let database_url = std::env::var("DATABASE_URL").unwrap();
     let db: DatabaseConnection = Database::connect(&database_url).await.unwrap();
     Migrator::up(&db, None).await.unwrap();
 
-    let listener = TcpListener::bind("127.0.0.1:7878").await.unwrap();
+    let listener = TcpListener::bind("0.0.0.0:7878").await.unwrap();
+
+    println!("We are ready to go, again!");
 
     loop {
         let (stream, _) = listener.accept().await.unwrap();
