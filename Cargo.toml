@@ -24,6 +24,7 @@ migration = { path = "./migration" }
 entity = { path = "./entity" }
 serde = { version = "1.0.198", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
+axum = "0.7.5"
 
 [profile.release-opt]
 inherits = "release"
