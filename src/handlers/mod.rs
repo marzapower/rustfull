@@ -32,7 +32,7 @@ where
         K: Serialize;
 }
 
-pub struct SimpleHandler {
+pub struct SimpleHandler<'a, T: EntityTrait> {
     pub db: &'a DatabaseConnection,
     pub phantom: PhantomData<&'a T>,
 }
