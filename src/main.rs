@@ -10,6 +10,8 @@ use rustfull::handlers::{Handler, SimpleHandler};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection};
 
+use axum::{extract::Path, routing::get, Router};
+
 use entity::prelude::*;
 
 #[tokio::main(worker_threads = 5)]
@@ -21,13 +23,36 @@ async fn main() {
     Migrator::up(&db, None).await.unwrap();
 
     let listener = TcpListener::bind("0.0.0.0:7878").await.unwrap();
-
+    
+    let app = Router::new()
+        .route("/users", get(get_all))
+        .route("/users/:user_id", get(path));
+    
     println!("We are ready to go, again!");
 
-    loop {
-        let (stream, _) = listener.accept().await.unwrap();
-        tokio::spawn(handle_connection(stream, db.clone()));
-    }
+    axum::serve(listener, app).await.unwrap();
+}
+
+async fn get_all() -> String {
+    let database_url = std::env::var("DATABASE_URL").unwrap();
+    let db: DatabaseConnection = Database::connect(&database_url).await.unwrap();
+    let users_handler: SimpleHandler<Users> = SimpleHandler {
+        db: db.clone(),
+        phantom: PhantomData,
+    };
+    let result = users_handler.get_all().await;
+    result.unwrap()
+}
+
+async fn path(Path(user_id): Path<i32>) -> String {
+    let database_url = std::env::var("DATABASE_URL").unwrap();
+    let db: DatabaseConnection = Database::connect(&database_url).await.unwrap();
+    let users_handler: SimpleHandler<Users> = SimpleHandler {
+        db: db.clone(),
+        phantom: PhantomData,
+    };
+    let result = users_handler.get(user_id).await;
+    result.unwrap()
 }
 
 async fn handle_connection(mut stream: TcpStream, db: DatabaseConnection) {
@@ -42,7 +67,8 @@ async fn handle_connection(mut stream: TcpStream, db: DatabaseConnection) {
             500,
             "ERROR",
             "<html><body>Error!</body></html>",
-        ).await;
+        )
+        .await;
         return;
     }
 
@@ -52,8 +78,14 @@ async fn handle_connection(mut stream: TcpStream, db: DatabaseConnection) {
 
     let mut handlers = Vec::new();
 
-    let users_handler: SimpleHandler<Users> = SimpleHandler { db: db.clone(), phantom: PhantomData };
-    let _posts_handler: SimpleHandler<Post> = SimpleHandler { db: db.clone(), phantom: PhantomData };
+    let users_handler: SimpleHandler<Users> = SimpleHandler {
+        db: db.clone(),
+        phantom: PhantomData,
+    };
+    let _posts_handler: SimpleHandler<Post> = SimpleHandler {
+        db: db.clone(),
+        phantom: PhantomData,
+    };
     handlers.push(users_handler);
     //handlers.push(posts_handler);
 
