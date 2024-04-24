@@ -32,15 +32,15 @@ where
         K: Serialize;
 }
 
-pub struct SimpleHandler<'a, T: EntityTrait> {
-    pub db: &'a DatabaseConnection,
-    pub phantom: PhantomData<&'a T>,
+pub struct SimpleHandler<T: EntityTrait> {
+    pub db: DatabaseConnection,
+    pub phantom: PhantomData<T>,
 }
 
 #[derive(Debug)]
 pub struct HandlerError;
 
-impl<T: EntityTrait> Handler<T> for SimpleHandler<'_, T>
+impl<T: EntityTrait> Handler<T> for SimpleHandler<T>
 where
     T: EntityTrait,
     <T::PrimaryKey as PrimaryKeyTrait>::ValueType: Clone + Serialize,
@@ -130,7 +130,7 @@ where
     }
 
     async fn get_all(&self) -> Result<String, HandlerError> {
-        let data = T::find().into_json().all(self.db).await.unwrap();
+        let data = T::find().into_json().all(&self.db).await.unwrap();
         Ok(json!({
           "result": data
         })
@@ -141,7 +141,7 @@ where
         K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
         K: Serialize,
     {
-        let data = T::find_by_id(id).into_json().one(self.db).await.unwrap();
+        let data = T::find_by_id(id).into_json().one(&self.db).await.unwrap();
 
         Ok(json!({
           "result": data

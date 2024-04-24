@@ -8,7 +8,7 @@ use tokio::net::{TcpListener, TcpStream};
 use rustfull::handlers::{Handler, SimpleHandler};
 
 use migration::{Migrator, MigratorTrait};
-use sea_orm::{Database, DatabaseConnection, EntityTrait};
+use sea_orm::{Database, DatabaseConnection};
 
 use entity::prelude::*;
 
@@ -52,8 +52,8 @@ async fn handle_connection(mut stream: TcpStream, db: DatabaseConnection) {
 
     let mut handlers = Vec::new();
 
-    let users_handler: SimpleHandler<Users> = SimpleHandler { db: &db, phantom: PhantomData };
-    let _posts_handler: SimpleHandler<Post> = SimpleHandler { db: &db, phantom: PhantomData };
+    let users_handler: SimpleHandler<Users> = SimpleHandler { db: db.clone(), phantom: PhantomData };
+    let _posts_handler: SimpleHandler<Post> = SimpleHandler { db: db.clone(), phantom: PhantomData };
     handlers.push(users_handler);
     //handlers.push(posts_handler);
 
