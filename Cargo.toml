@@ -24,4 +24,5 @@ migration = { path = "./migration" }
 entity = { path = "./entity" }
 serde = { version = "1.0.198", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
-axum = "0.7.5"
+axum = { version = "0.7.5", features = ["macros"] }
+axum-extra = { version = "0.9.3", features = ["typed-header", "typed-routing"] }
