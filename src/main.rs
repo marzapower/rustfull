@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use std::marker::PhantomData;
+
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -49,9 +51,11 @@ async fn handle_connection(mut stream: TcpStream, db: DatabaseConnection) {
     let http_version = pieces.get(2).unwrap();
 
     let mut handlers = Vec::new();
-    handlers.push(SimpleHandler::<Users>::new(&db));
 
-    Users::find_by_id(1);
+    let users_handler: SimpleHandler<Users> = SimpleHandler { db: &db, phantom: PhantomData };
+    let _posts_handler: SimpleHandler<Post> = SimpleHandler { db: &db, phantom: PhantomData };
+    handlers.push(users_handler);
+    //handlers.push(posts_handler);
 
     if *http_version == "HTTP/1.1" {
         let mut handled = false;

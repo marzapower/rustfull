@@ -32,18 +32,9 @@ where
         K: Serialize;
 }
 
-pub struct SimpleHandler<'a, T: EntityTrait> {
-    db: &'a DatabaseConnection,
-    phantom: PhantomData<&'a T>,
-}
-
-impl<'a, T: EntityTrait> SimpleHandler<'a, T> {
-    pub fn new(db: &'a DatabaseConnection) -> Self {
-        SimpleHandler::<T> {
-            db,
-            phantom: PhantomData,
-        }
-    }
+pub struct SimpleHandler {
+    pub db: &'a DatabaseConnection,
+    pub phantom: PhantomData<&'a T>,
 }
 
 #[derive(Debug)]
