@@ -17,6 +17,11 @@ services:
       context: .
       args:
         DOCKER_BUILDKIT: 1
+        PROJECT_NAME: rustfull
+        TARGET_ARCHITECTURE: x86_64
+        # release-superopt creates a more optimized build than release-opt but might
+        # take significantly longer since it uses fat lto and only a single build thread
+        PROFILE: release-superopt
     ports:
       - "3001:7878"
     environment:
