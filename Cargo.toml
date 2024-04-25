@@ -25,4 +25,9 @@ entity = { path = "./entity" }
 serde = { version = "1.0.198", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 axum = { version = "0.7.5", features = ["macros"] }
-axum-extra = { version = "0.9.3", features = ["typed-header", "typed-routing"] }
+axum-extra = { version = "0.9.3" , features = ["typed-header", "typed-routing"] }
+
+# This tells cargo to use this source for any axum-macros dependency in the dependency tree
+# instead. This is currently required cuz of https://github.com/tokio-rs/axum/pull/2723
+[patch.crates-io]
+axum-macros = { git = "https://github.com/JustusFluegel/axum.git", branch = "main" }

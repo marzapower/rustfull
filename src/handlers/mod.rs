@@ -1,11 +1,6 @@
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display};
 
-use axum::{
-    extract::{FromRequestParts, Path, State},
-    http::{request::Parts, StatusCode},
-    response::IntoResponse,
-    Json, Router,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json, Router};
 use axum_extra::routing::{RouterExt, TypedPath};
 use sea_orm::{EntityTrait, PrimaryKeyTrait};
 use serde::Deserialize;
@@ -55,48 +50,11 @@ pub async fn get<T: EntityTrait>(
     )
 }
 
-#[derive(Deserialize)]
+#[derive(TypedPath, Deserialize)]
+#[typed_path("/:id")]
 pub struct GetById<T> {
     id: T,
 }
-
-// I would recommend using the derive macro #[derive(TypedPath)] but since that
-// currently doesn't support generics I felt so free and inlined this here, while
-// creating a pr in axum-extra to fix that - should probably be able to be replaced with
-// the derive macro afterwards
-impl<T: Display> TypedPath for GetById<T> {
-    const PATH: &'static str = "/:id";
-}
-
-impl<T: Display> Display for GetById<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self { id } = self;
-        write!(
-            f,
-            "/{id}",
-            id = axum_extra::__private::utf8_percent_encode(
-                &id.to_string(),
-                axum_extra::__private::PATH_SEGMENT,
-            )
-        )
-    }
-}
-
-#[axum::async_trait]
-impl<T, S> FromRequestParts<S> for GetById<T>
-where
-    S: Send + Sync,
-    T: Send + Sync,
-    for<'de> T: Deserialize<'de>,
-{
-    type Rejection = <Path<Self> as FromRequestParts<S>>::Rejection;
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        Path::from_request_parts(parts, state)
-            .await
-            .map(|path| path.0)
-    }
-}
-/// till here
 
 pub async fn get_by_id<T: EntityTrait>(
     GetById { id }: GetById<IdType<T>>,
@@ -128,48 +86,11 @@ pub async fn create<T: EntityTrait>(
     StatusCode::NOT_IMPLEMENTED
 }
 
-#[derive(Deserialize)]
+#[derive(TypedPath, Deserialize)]
+#[typed_path("/:id")]
 pub struct DeleteById<T> {
     id: T,
 }
-
-// I would recommend using the derive macro #[derive(TypedPath)] but since that
-// currently doesn't support generics I felt so free and inlined this here, while
-// creating a pr in axum-extra to fix that - should probably be able to be replaced with
-// the derive macro afterwards
-impl<T: Display> TypedPath for DeleteById<T> {
-    const PATH: &'static str = "/:id";
-}
-
-impl<T: Display> Display for DeleteById<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self { id } = self;
-        write!(
-            f,
-            "/{id}",
-            id = axum_extra::__private::utf8_percent_encode(
-                &id.to_string(),
-                axum_extra::__private::PATH_SEGMENT,
-            )
-        )
-    }
-}
-
-#[axum::async_trait]
-impl<T, S> FromRequestParts<S> for DeleteById<T>
-where
-    S: Send + Sync,
-    T: Send + Sync,
-    for<'de> T: Deserialize<'de>,
-{
-    type Rejection = <Path<Self> as FromRequestParts<S>>::Rejection;
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        Path::from_request_parts(parts, state)
-            .await
-            .map(|path| path.0)
-    }
-}
-/// till here
 
 pub async fn delete_by_id<T: EntityTrait>(
     DeleteById { id: _ }: DeleteById<IdType<T>>,
@@ -181,48 +102,11 @@ pub async fn delete_by_id<T: EntityTrait>(
     StatusCode::NOT_IMPLEMENTED
 }
 
-#[derive(Deserialize)]
+#[derive(TypedPath, Deserialize)]
+#[typed_path("/:id")]
 pub struct UpdateById<T> {
     id: T,
 }
-
-// I would recommend using the derive macro #[derive(TypedPath)] but since that
-// currently doesn't support generics I felt so free and inlined this here, while
-// creating a pr in axum-extra to fix that - should probably be able to be replaced with
-// the derive macro afterwards
-impl<T: Display> TypedPath for UpdateById<T> {
-    const PATH: &'static str = "/:id";
-}
-
-impl<T: Display> Display for UpdateById<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self { id } = self;
-        write!(
-            f,
-            "/{id}",
-            id = axum_extra::__private::utf8_percent_encode(
-                &id.to_string(),
-                axum_extra::__private::PATH_SEGMENT,
-            )
-        )
-    }
-}
-
-#[axum::async_trait]
-impl<T, S> FromRequestParts<S> for UpdateById<T>
-where
-    S: Send + Sync,
-    T: Send + Sync,
-    for<'de> T: Deserialize<'de>,
-{
-    type Rejection = <Path<Self> as FromRequestParts<S>>::Rejection;
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        Path::from_request_parts(parts, state)
-            .await
-            .map(|path| path.0)
-    }
-}
-/// till here
 
 pub async fn update_by_id<T: EntityTrait>(
     UpdateById { id: _ }: UpdateById<IdType<T>>,
