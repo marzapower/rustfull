@@ -1,177 +1,119 @@
-use std::marker::PhantomData;
+use std::fmt::{Debug, Display};
 
-use futures::Future;
-use sea_orm::{DatabaseConnection, EntityTrait, PrimaryKeyTrait};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json, Router};
+use axum_extra::routing::{RouterExt, TypedPath};
+use sea_orm::{EntityTrait, PrimaryKeyTrait};
+use serde::Deserialize;
 
-pub trait Handler<T>
+use crate::state::AppState;
+
+#[allow(type_alias_bounds)]
+pub type IdType<T>
 where
     T: EntityTrait,
-    for<'a> <T::PrimaryKey as PrimaryKeyTrait>::ValueType: Deserialize<'a>,
-{
-    fn handle(
-        &self,
-        http_method: &str,
-        uri: &str,
-    ) -> impl Future<Output = Option<Result<String, HandlerError>>>;
+= <T::PrimaryKey as PrimaryKeyTrait>::ValueType;
 
-    fn get_all(&self) -> impl Future<Output = Result<String, HandlerError>>;
-    fn get<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
-    where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
-        K: Serialize;
-    fn create(&self) -> impl Future<Output = Result<String, HandlerError>>;
-    fn delete<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
-    where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
-        K: Serialize;
-    fn update<K>(&self, id: K) -> impl Future<Output = Result<String, HandlerError>>
-    where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
-        K: Serialize;
-}
-
-pub struct SimpleHandler<T: EntityTrait> {
-    pub db: DatabaseConnection,
-    pub phantom: PhantomData<T>,
-}
-
-#[derive(Debug)]
-pub struct HandlerError;
-
-impl<T: EntityTrait> Handler<T> for SimpleHandler<T>
+// this is fine for quick and dirty debugging but please never use
+// something like this in production since it's way to easy to accidentally
+// leak unwanted data
+pub fn sea_orm_entity_router<T>() -> Router<AppState>
 where
     T: EntityTrait,
-    <T::PrimaryKey as PrimaryKeyTrait>::ValueType: Clone + Serialize,
-    for<'a> <T::PrimaryKey as PrimaryKeyTrait>::ValueType: Deserialize<'a>,
+    IdType<T>: Debug + Display + Send + Sync,
+    for<'a> IdType<T>: Deserialize<'a>,
 {
-    // Restful paths are like these:
-    // let's imagine we have authors, and we have books written by them
-    //
-    // GET /authors
-    // GET /authors/:id
-    // PUT /authors
-    // PATCH /authors/:id
-    // DELETE /authors/:id
-    //
-    // GET /authors/:id/books
-    // GET /authors/:id/books/:book_id
-    // ...
-    // ...
-    //
-    async fn handle(&self, http_method: &str, uri: &str) -> Option<Result<String, HandlerError>> {
-        let mut pieces = uri.split('/');
-        pieces.next();
-        if let Some(some) = pieces.next() {
-            if some == T::default().table_name() {
-                let id = pieces.next();
-                let tuple = (http_method, id);
+    Router::new()
+        .typed_get(get::<T>)
+        .typed_get(get_by_id::<T>)
+        .typed_post(create::<T>)
+        .typed_patch(update_by_id::<T>)
+        .typed_delete(delete_by_id::<T>)
+}
 
-                println!("Trying to match this: {:?}", tuple);
+#[derive(TypedPath, Deserialize)]
+#[typed_path("/")]
+pub struct Get;
 
-                match tuple {
-                    ("GET", None) => {
-                        return Some(self.get_all().await);
-                    }
+pub async fn get<T: EntityTrait>(
+    _: Get,
+    State(AppState {
+        database_connection,
+        ..
+    }): State<AppState>,
+) -> impl IntoResponse {
+    Json(
+        T::find()
+            .into_json()
+            .all(&database_connection)
+            .await
+            .unwrap(),
+    )
+}
 
-                    ("PUT", None) => {
-                        return Some(self.create().await);
-                    }
+#[derive(TypedPath, Deserialize)]
+#[typed_path("/:id")]
+pub struct GetById<T> {
+    id: T,
+}
 
-                    ("POST", Some(id)) => {
-                        return Some(
-                            self
-                                .update(
-                                    serde_json::from_str::<
-                                        <T::PrimaryKey as PrimaryKeyTrait>::ValueType,
-                                    >(id)
-                                    .unwrap(),
-                                )
-                                .await,
-                        );
-                    }
+pub async fn get_by_id<T: EntityTrait>(
+    GetById { id }: GetById<IdType<T>>,
+    State(AppState {
+        database_connection,
+        ..
+    }): State<AppState>,
+) -> impl IntoResponse {
+    Json(
+        T::find_by_id(id)
+            .into_json()
+            .one(&database_connection)
+            .await
+            .unwrap(),
+    )
+}
 
-                    ("DELETE", Some(id)) => {
-                        return Some(
-                            self
-                                .delete(
-                                    serde_json::from_str::<
-                                        <T::PrimaryKey as PrimaryKeyTrait>::ValueType,
-                                    >(id)
-                                    .unwrap(),
-                                )
-                                .await,
-                        );
-                    }
+#[derive(TypedPath, Debug)]
+#[typed_path("/")]
+pub struct Create;
 
-                    ("GET", Some(id)) => {
-                        return Some(
-                            self
-                                .get(
-                                    serde_json::from_str::<
-                                        <T::PrimaryKey as PrimaryKeyTrait>::ValueType,
-                                    >(id)
-                                    .unwrap(),
-                                )
-                                .await,
-                        );
-                    }
+pub async fn create<T: EntityTrait>(
+    _: Create,
+    State(AppState {
+        database_connection: _,
+        ..
+    }): State<AppState>,
+) -> impl IntoResponse {
+    StatusCode::NOT_IMPLEMENTED
+}
 
-                    (_, _) => {
-                        return None;
-                    }
-                }
-            }
-        } else {
-            println!("I really do not know what to do!");
-        }
-        None
-    }
+#[derive(TypedPath, Deserialize)]
+#[typed_path("/:id")]
+pub struct DeleteById<T> {
+    id: T,
+}
 
-    async fn get_all(&self) -> Result<String, HandlerError> {
-        let data = T::find().into_json().all(&self.db).await.unwrap();
-        Ok(json!({
-          "result": data
-        })
-        .to_string())
-    }
-    async fn get<K>(&self, id: K) -> Result<String, HandlerError>
-    where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
-        K: Serialize,
-    {
-        let data = T::find_by_id(id).into_json().one(&self.db).await.unwrap();
+pub async fn delete_by_id<T: EntityTrait>(
+    DeleteById { id: _ }: DeleteById<IdType<T>>,
+    State(AppState {
+        database_connection: _,
+        ..
+    }): State<AppState>,
+) -> impl IntoResponse {
+    StatusCode::NOT_IMPLEMENTED
+}
 
-        Ok(json!({
-          "result": data
-        })
-        .to_string())
-    }
-    async fn create(&self) -> Result<String, HandlerError> {
-        Ok(json!({
-          "result": {}
-        })
-        .to_string())
-    }
-    async fn delete<K>(&self, _id: K) -> Result<String, HandlerError>
-    where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
-        K: Serialize,
-    {
-        Ok(json!({
-          "result": {}
-        })
-        .to_string())
-    }
-    async fn update<K>(&self, _id: K) -> Result<String, HandlerError>
-    where
-        K: Into<<T::PrimaryKey as PrimaryKeyTrait>::ValueType>,
-        K: Serialize,
-    {
-        Ok(json!({
-          "result": {}
-        })
-        .to_string())
-    }
+#[derive(TypedPath, Deserialize)]
+#[typed_path("/:id")]
+pub struct UpdateById<T> {
+    id: T,
+}
+
+pub async fn update_by_id<T: EntityTrait>(
+    UpdateById { id: _ }: UpdateById<IdType<T>>,
+    State(AppState {
+        database_connection: _,
+        ..
+    }): State<AppState>,
+) -> impl IntoResponse {
+    StatusCode::NOT_IMPLEMENTED
 }
